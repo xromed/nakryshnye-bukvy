@@ -4,7 +4,7 @@ os.makedirs('photos', exist_ok=True)
 keys = sorted({os.path.basename(p).split('.')[0] for p in glob.glob('chunks/*')})
 for key in keys:
     parts = sorted(glob.glob(f'chunks/{key}.*'))
-    b64 = ''.join(open(p).read().strip() for p in parts)
+    b64 = ''.join(''.join(open(p).read().split()) for p in parts)
     try:
         data = base64.b64decode(b64, validate=True)
     except Exception as e:
