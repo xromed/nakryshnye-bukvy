@@ -1,0 +1,32 @@
+name: build-photos
+on:
+  push:
+    branches: [gh-pages]
+    paths: ['chunks/**', '.github/workflows/build-photos.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Decode chunks into photos
+        run: |
+          set -e
+          mkdir -p photos
+          for key in $(ls chunks | sed 's/\..*//' | sort -u); do
+            b64=$(cat $(ls chunks/$key.* | sort) | tr -d '\n')
+            echo "$b64" | base64 -d > photos/$key.jpg
+            dims=$(python3 -c "import struct,sys\nf=open('photos/$key.jpg','rb').read()\ni=2\nwhile i<len(f):\n  m=f[i+1]; L=struct.unpack('>H',f[i+2:i+4])[0]\n  if m in (0xC0,0xC1,0xC2):\n    h,w=struct.unpack('>HH',f[i+5:i+9]); print(w,h); break\n  i+=2+L")
+            set -- $dims
+            printf '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="%s" height="%s" viewBox="0 0 %s %s"><image width="%s" height="%s" xlink:href="data:image/jpeg;base64,%s"/></svg>' "$1" "$2" "$1" "$2" "$1" "$2" "$b64" > photos/$key.svg
+            echo "$key: ${1}x${2}, $(stat -c %s photos/$key.jpg) bytes"
+          done
+      - name: Commit
+        run: |
+          git config user.name github-actions
+          git config user.email actions@github.com
+          git add photos
+          git commit -m "Сборка фото из чанков" || exit 0
+          git push
