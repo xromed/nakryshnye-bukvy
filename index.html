@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Накрышные буквы Ташкент</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+:root{
+  --bg:#f3f1ec; --panel:#ffffff; --fg:#1d1f22; --muted:#6b6f76; --line:#dcd8cf;
+  --accent:#d94f1e; --accent-fg:#ffffff; --chip:#efe9df; --ok:#2e7d4f; --warn:#b26a00;
+  --font:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#17181b;--panel:#1f2125;--fg:#ecebe7;--muted:#9a9ea6;--line:#34373d;--accent:#ff7a45;--accent-fg:#1a1a1a;--chip:#2a2d33;--ok:#5ec98a;--warn:#e6a23c;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#17181b;--panel:#1f2125;--fg:#ecebe7;--muted:#9a9ea6;--line:#34373d;--accent:#ff7a45;--accent-fg:#1a1a1a;--chip:#2a2d33;--ok:#5ec98a;--warn:#e6a23c;color-scheme:dark}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font);font-size:14px;line-height:1.4}
+.app{display:grid;grid-template-columns:320px 1fr;height:100%;min-height:0}
+.rail{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-width:0;min-height:0}
+.rail header{padding:16px 16px 12px;border-bottom:1px solid var(--line)}
+.rail h1{font-size:17px;font-weight:600;margin:0 0 4px;text-wrap:balance}
+.rail header p{margin:0;color:var(--muted);font-size:12.5px}
+.list{overflow:auto;flex:1;min-height:0;padding:8px}
+.item{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start;padding:10px 8px;border-radius:8px;cursor:pointer;border:1px solid transparent}
+.item:hover{background:var(--chip)}
+.item.active{border-color:var(--accent)}
+.item:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.num{width:28px;height:28px;border-radius:50%;background:var(--accent);color:var(--accent-fg);display:grid;place-items:center;font:600 12px/1 var(--mono)}
+.item .t{font-weight:500}
+.item .s{color:var(--muted);font-size:12.5px;margin-top:2px}
+.item .s b{font-family:var(--mono);font-weight:500;color:var(--fg)}
+.rail footer{padding:10px 16px;border-top:1px solid var(--line);color:var(--muted);font-size:11.5px}
+#map{min-height:0;height:100%;background:var(--bg)}
+.pin{width:28px;height:28px;margin:-14px 0 0 -14px;border-radius:50%;background:var(--accent);color:var(--accent-fg);border:2px solid var(--accent-fg);box-shadow:0 1px 4px rgba(0,0,0,.35);display:grid;place-items:center;font:600 12px/1 var(--mono)}
+.pin.approx{background:var(--warn)}
+.leaflet-popup-content-wrapper{background:var(--panel);color:var(--fg);border-radius:10px;font-family:var(--font)}
+.leaflet-popup-tip{background:var(--panel)}
+.leaflet-popup-content{margin:0;width:340px!important;max-width:calc(100vw - 80px)}
+.pp img{display:block;width:100%;height:auto;border-radius:10px 10px 0 0}
+.pp .b{padding:12px 14px 14px}
+.pp h2{font-size:15px;margin:0 0 2px;font-weight:600}
+.pp .addr{margin:0 0 10px;color:var(--muted);font-size:12.5px}
+.pp dl{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;margin:0;font-size:12.5px}
+.pp dt{color:var(--muted)}.pp dd{margin:0;font-variant-numeric:tabular-nums}
+.pp .note{margin:10px 0 0;font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:8px}
+.pp .acc{display:inline-block;margin-top:6px;font-size:11px;padding:2px 8px;border-radius:999px;background:var(--chip)}
+.pp .acc.approx{color:var(--warn)}.pp .acc.exact{color:var(--ok)}
+.pp .links{margin-top:8px;font-size:12px}
+.pp .links a{color:var(--accent)}
+.leaflet-container{font-family:var(--font)}
+@media (max-width:760px){
+  .app{grid-template-columns:1fr;grid-template-rows:1fr 42vh}
+  .rail{order:2;border-right:0;border-top:1px solid var(--line)}
+  #map{order:1}
+}
+</style></head><body>
+<div class="app">
+  <aside class="rail">
+    <header>
+      <h1>Накрышные буквы, Ташкент</h1>
+      <p>9 конструкций по паспортам рекламных мест. Подложка OpenStreetMap, есть спутник.</p>
+    </header>
+    <div class="list" id="list"></div>
+    <footer>Оранжевые метки — адрес подтверждён по OSM; жёлтая — координата снята со схемы паспорта. Паспорта действуют до 31.12.2029.</footer>
+  </aside>
+  <div id="map"></div>
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const SITES = [{"n": "CH-16766", "internal": "7473", "place": "C-1726294-05879", "lat": 41.28652, "lon": 69.22918, "addr": "Chilonzor tumani, Chilonzor-I, 11", "ru": "Чиланзарский р-н, Чиланзар-1, 11", "size": "1.3 × 12 м", "area": "15.6 м²", "fmt": "Большой формат", "issued": "14.02.2025", "note": "Здание у пр. Бунёдкор, рядом с м. Новза", "acc": "exact", "img": "photos/16766.svg", "acc_label": "адрес подтверждён по OSM"}, {"n": "CH-16765", "internal": "6573", "place": "S-1726277-05837", "lat": 41.31362, "lon": 69.2384, "addr": "Shayxontoxur tumani, Qoratosh ko'chasi, 104", "ru": "Шайхантахурский р-н, ул. Караташ, 104", "size": "2.5 × 12 м", "area": "30 м²", "fmt": "Сверхбольшой формат", "issued": "14.02.2025", "note": "Между ул. Караташ и ул. Фурката, рядом с пл. Дружбы народов", "acc": "exact", "img": "photos/16765.svg", "acc_label": "адрес подтверждён по OSM"}, {"n": "CH-14543", "internal": "6571", "place": "S-1726277-05821", "lat": 41.31389, "lon": 69.23801, "addr": "Qoratosh, Qoratosh ko'chasi, 105", "ru": "Шайхантахурский р-н, ул. Караташ, 105", "size": "2.5 × 12 м", "area": "30 м²", "fmt": "Сверхбольшой формат", "issued": "14.01.2025", "note": "Соседнее здание с Караташ 104", "acc": "exact", "img": "photos/14543.svg", "acc_label": "адрес подтверждён по OSM"}, {"n": "CH-16591", "internal": "11717", "place": "Y-1726266-05839", "lat": 41.32719, "lon": 69.29173, "addr": "Mirzo Ulug'bek mahallasi, Osiyo ko'chasi", "ru": "Юнусабадский р-н, мах. Мирзо Улугбек, ул. Осиё (д. 21)", "size": "2.5 × 12 м", "area": "30 м²", "fmt": "Сверхбольшой формат", "issued": "12.02.2025", "note": "Северо-восточный угол перекрёстка ул. Осиё и ул. Чингиза Айтматова, напротив Астрономического института", "acc": "exact", "img": "photos/16591.svg", "acc_label": "адрес подтверждён по OSM"}, {"n": "CH-05052", "internal": "11546", "place": "S-1726277-05861", "lat": 41.31819, "lon": 69.23, "addr": "Shayxontoxur tumani, Chorsu mavzesi, 4", "ru": "Шайхантахурский р-н, массив Чорсу, 4", "size": "2 × 12 м", "area": "24 м²", "fmt": "Сверхбольшой формат", "issued": "22.03.2025", "note": "Угол ул. Кукча Дарвоза и ул. Самарканд Дарвоза", "acc": "exact", "img": "photos/05052.svg", "acc_label": "адрес подтверждён по OSM"}, {"n": "CH-04390", "internal": "10679", "place": "Y-1726290-05499", "lat": 41.2508, "lon": 69.32415, "addr": "Yashnobod tumani, Mumtoz mahallasi, Farg'ona Yo'li, 505", "ru": "Яшнабадский р-н, мах. Мумтоз, Ферганское шоссе, 505", "size": "2.5 × 11 м", "area": "27.5 м²", "fmt": "Сверхбольшой формат", "issued": "07.03.2025", "note": "Одно здание с CH-04389; северная часть дома, у ул. Мумтоз", "acc": "building", "img": "photos/04390.svg", "acc_label": "здание подтверждено, позиция на здании условная"}, {"n": "CH-04389", "internal": "10710", "place": "Y-1726290-05498", "lat": 41.2504, "lon": 69.32425, "addr": "Yashnobod tumani, Mumtoz mahallasi, Farg'ona Yo'li, 505", "ru": "Яшнабадский р-н, мах. Мумтоз, Ферганское шоссе, 505", "size": "2.5 × 12 м", "area": "30 м²", "fmt": "Сверхбольшой формат", "issued": "07.03.2025", "note": "Одно здание с CH-04390; южная часть дома", "acc": "building", "img": "photos/04389.svg", "acc_label": "здание подтверждено, позиция на здании условная"}, {"n": "CH-05897", "internal": "12217", "place": "Y-1726266-05864", "lat": 41.3598, "lon": 69.338, "addr": "Yunusobod tumani, Posira mahalla, Bogishamol ko'chasi, 2", "ru": "Юнусабадский р-н, мах. Посира, ул. Богишамол, 2", "size": "2.5 × 12 м", "area": "30 м²", "fmt": "Сверхбольшой формат", "issued": "03.05.2025", "note": "Перекрёсток «Сельхоз»: Богишамол йўли / Темура Малика, у Аграрного университета. Координата снята со схемы паспорта (±30 м)", "acc": "approx", "img": "photos/05897.svg", "acc_label": "по схеме паспорта, ±30 м"}, {"n": "CH-04545", "internal": "12374", "place": "Y-1726266-05855", "lat": 41.36094, "lon": 69.27877, "addr": "Yunusobod tumani, Yunusobod-4, 22", "ru": "Юнусабадский р-н, Юнусабад-4, 22", "size": "3 × 11 м", "area": "33 м²", "fmt": "Сверхбольшой формат", "issued": "12.03.2025", "note": "Дом у ул. Ахмада Дониша, между массивами Юнусабад-4 и 5", "acc": "exact", "img": "photos/04545.svg", "acc_label": "адрес подтверждён по OSM"}];
+const COMMON = {"owner": "ООО \"MEDIA ROOF\" (ИНН 311 386 732)", "valid": "31.12.2029", "kind": "Крышная конструкция (буквы), 1 сторона, статика", "city": "Toshkent shahri"};
+const map = L.map('map', {zoomControl:true, scrollWheelZoom:true});
+const street = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {maxZoom:19, attribution:'Tiles &copy; Esri &mdash; Esri, HERE, Garmin, OpenStreetMap contributors'});
+const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {maxZoom:19, attribution:'Tiles &copy; Esri, Maxar, Earthstar Geographics'});
+const satLabels = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {maxZoom:19, pane:'overlayPane'});
+const satGroup = L.layerGroup([sat, satLabels]);
+const osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'});
+osm.addTo(map);
+L.control.layers({'OpenStreetMap': osm, 'Спутник (Esri)': satGroup, 'Карта (Esri)': street}, null, {position:'topright', collapsed:false}).addTo(map);
+const markers = [];
+const list = document.getElementById('list');
+SITES.forEach((s, i) => {
+  const idx = i + 1;
+  const icon = L.divIcon({className:'', html:`<div class="pin ${s.acc==='approx'?'approx':''}">${idx}</div>`, iconSize:[28,28], iconAnchor:[14,14], popupAnchor:[0,-14]});
+  const m = L.marker([s.lat, s.lon], {icon, title:s.n}).addTo(map);
+  const osmUrl = `https://www.openstreetmap.org/?mlat=${s.lat}&mlon=${s.lon}#map=18/${s.lat}/${s.lon}`;
+  const gm = `https://www.google.com/maps?q=${s.lat},${s.lon}`;
+  m.bindPopup(`<div class="pp"><img src="${s.img}" alt="Фото/эскиз ${s.n}"><div class="b">
+    <h2>№ ${s.n} <span style="color:var(--muted);font-weight:400">· ${idx}</span></h2>
+    <p class="addr">${s.ru}<br><span style="font-size:11.5px">${COMMON.city}, ${s.addr}</span></p>
+    <dl><dt>Размер</dt><dd>${s.size}</dd><dt>Площадь</dt><dd>${s.area}</dd><dt>Формат</dt><dd>${s.fmt}</dd>
+    <dt>Тип</dt><dd>${COMMON.kind}</dd><dt>Место</dt><dd>${s.place}</dd><dt>Выдан</dt><dd>${s.issued} · до ${COMMON.valid}</dd>
+    <dt>Владелец</dt><dd>${COMMON.owner}</dd><dt>Файл</dt><dd>${s.internal}-${s.n.replace('CH','СН')}</dd>
+    <dt>Коорд.</dt><dd>${s.lat.toFixed(5)}, ${s.lon.toFixed(5)}</dd></dl>
+    <p class="note">${s.note}</p>
+    <span class="acc ${s.acc}">${s.acc_label}</span>
+    <div class="links"><a href="${osmUrl}" target="_blank" rel="noopener">Открыть в OSM</a> · <a href="${gm}" target="_blank" rel="noopener">Google Maps</a></div>
+  </div></div>`, {maxWidth:360});
+  markers.push(m);
+  const el = document.createElement('div');
+  el.className = 'item'; el.tabIndex = 0; el.id = 'item-' + idx;
+  el.innerHTML = `<div class="num">${idx}</div><div><div class="t">${s.ru}</div><div class="s"><b>${s.n}</b> · ${s.size} · ${s.area}</div></div>`;
+  const go = () => { map.flyTo([s.lat, s.lon], 17, {duration:.6}); m.openPopup(); };
+  el.addEventListener('click', go);
+  el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+  m.on('popupopen', () => { document.querySelectorAll('.item').forEach(x => x.classList.remove('active')); el.classList.add('active'); el.scrollIntoView({block:'nearest'}); });
+  list.appendChild(el);
+});
+map.fitBounds(L.featureGroup(markers).getBounds().pad(0.15));
+</script>
+</body></html>
